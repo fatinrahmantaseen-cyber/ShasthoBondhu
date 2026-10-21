@@ -18,17 +18,54 @@ export function AppointmentModal({ isOpen, onClose, doctor }: AppointmentModalPr
   const [date, setDate] = useState('');
   const [shift, setShift] = useState('Evening');
   const [symptom, setSymptom] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
   const [isBooked, setIsBooked] = useState(false);
 
   if (!isOpen || !doctor) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage('');
+
+    // Bangladeshi phone validation
+    const cleanPhone = patientPhone.replace(/[\s-]/g, '');
+    const bdPhoneRegex = /^(?:\+?880|0)?1[3-9]\d{8}$/;
+    if (!bdPhoneRegex.test(cleanPhone)) {
+      setErrorMessage(
+        language === 'bn'
+          ? 'অনুগ্রহ করে সঠিক ১১ ডিজিটের মোবাইল নম্বর লিখুন (যেমন: 01700000000)।'
+          : 'Please enter a valid 11-digit Bangladeshi mobile number (e.g. 01700000000).'
+      );
+      return;
+    }
+
+    if (!date) {
+      setErrorMessage(
+        language === 'bn'
+          ? 'অনুগ্রহ করে অ্যাপয়েন্টমেন্টের তারিখ নির্বাচন করুন।'
+          : 'Please select an appointment date.'
+      );
+      return;
+    }
+
+    const selected = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (selected < today) {
+      setErrorMessage(
+        language === 'bn'
+          ? 'অ্যাপয়েন্টমেন্টের তারিখ অবশ্যই বর্তমান বা ভবিষ্যৎ তারিখ হতে হবে।'
+          : 'Appointment date must be today or a future date.'
+      );
+      return;
+    }
+
     setIsBooked(true);
   };
 
   const handleReset = () => {
     setIsBooked(false);
+    setErrorMessage('');
     setPatientName('');
     setPatientPhone('');
     setDate('');
@@ -131,6 +168,13 @@ export function AppointmentModal({ isOpen, onClose, doctor }: AppointmentModalPr
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
+              {errorMessage && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <span className="font-medium">{errorMessage}</span>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
                   {t.modals.appointment.patientName} *
@@ -224,3 +268,4 @@ export function AppointmentModal({ isOpen, onClose, doctor }: AppointmentModalPr
     </div>
   );
 }
+

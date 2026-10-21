@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useLanguage } from '@/context/language-context';
 import { Doctor } from '@/types';
-import { SAMPLE_DOCTORS, BANGLADESH_DIVISIONS } from '@/data/sample-data';
+import { SAMPLE_DOCTORS, BANGLADESH_DIVISIONS, DIVISION_NAMES_BN } from '@/data/sample-data';
 import {
   Stethoscope,
   Search,
@@ -94,6 +94,7 @@ export function DoctorDirectory({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t.doctors.searchPlaceholder}
+                aria-label={t.doctors.searchPlaceholder}
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -104,12 +105,13 @@ export function DoctorDirectory({
               <select
                 value={division}
                 onChange={(e) => setDivision(e.target.value)}
+                aria-label={t.hero.allDivisions}
                 className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 bg-white text-xs sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
               >
                 <option value="All">{t.hero.allDivisions}</option>
                 {BANGLADESH_DIVISIONS.map((div) => (
                   <option key={div} value={div}>
-                    {div}
+                    {language === 'bn' ? DIVISION_NAMES_BN[div] : div}
                   </option>
                 ))}
               </select>

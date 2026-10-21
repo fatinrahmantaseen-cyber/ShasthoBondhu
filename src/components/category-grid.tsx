@@ -208,3 +208,4 @@ export function CategoryGrid({ onOpenHotlines }: CategoryGridProps) {
     </section>
   );
 }
+

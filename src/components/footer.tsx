@@ -138,7 +138,7 @@ export function Footer({ onOpenPrivacy, onOpenTerms, onOpenHotlines }: FooterPro
           {/* Legal / Policy */}
           <div className="space-y-3">
             <h5 className="text-xs font-bold uppercase tracking-wider text-white">
-              Compliance & Ethics
+              {t.footer.complianceTitle}
             </h5>
             <ul className="space-y-2 text-xs">
               <li>
@@ -146,7 +146,7 @@ export function Footer({ onOpenPrivacy, onOpenTerms, onOpenHotlines }: FooterPro
                   onClick={onOpenPrivacy}
                   className="hover:text-blue-400 transition-colors text-left cursor-pointer"
                 >
-                  Privacy & Donor Protection
+                  {t.modals.legal.privacyTitle}
                 </button>
               </li>
               <li>
@@ -154,14 +154,14 @@ export function Footer({ onOpenPrivacy, onOpenTerms, onOpenHotlines }: FooterPro
                   onClick={onOpenTerms}
                   className="hover:text-blue-400 transition-colors text-left cursor-pointer"
                 >
-                  Terms & Medical Disclaimer
+                  {t.modals.legal.termsTitle}
                 </button>
               </li>
               <li>
-                <span className="text-slate-500 block">Non-Commercial Blood Policy</span>
+                <span className="text-slate-500 block">{t.footer.bloodPolicy}</span>
               </li>
               <li>
-                <span className="text-slate-500 block">DGHS Guidelines Compliant</span>
+                <span className="text-slate-500 block">{t.footer.dghsGuideline}</span>
               </li>
             </ul>
           </div>

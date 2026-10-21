@@ -95,19 +95,24 @@ function ShasthoBondhuApp() {
 
         {/* Blood Donation Section */}
         <BloodDonation
+          key={`blood-${heroSearchQuery}-${heroDivision}`}
           initialGroup={null}
+          initialDivision={heroDivision}
+          initialSearch={heroSearchQuery}
           onOpenDonorRegister={handleOpenDonorRegister}
           onRequestBloodInfo={() => handleOpenLegal('privacy')}
         />
 
         {/* Hospital Directory Preview */}
         <HospitalDirectory
+          key={`hosp-${heroSearchQuery}-${heroDivision}`}
           initialSearch={heroSearchQuery}
           initialDivision={heroDivision}
         />
 
         {/* Doctor Directory Preview */}
         <DoctorDirectory
+          key={`doc-${heroSearchQuery}-${heroDivision}`}
           initialSearch={heroSearchQuery}
           initialDivision={heroDivision}
           onSelectDoctorForAppointment={handleOpenDoctorAppointment}
@@ -115,6 +120,7 @@ function ShasthoBondhuApp() {
 
         {/* Pharmacy Directory Preview */}
         <PharmacyDirectory
+          key={`pharma-${heroSearchQuery}-${heroDivision}`}
           initialSearch={heroSearchQuery}
           initialDivision={heroDivision}
         />
@@ -132,12 +138,14 @@ function ShasthoBondhuApp() {
 
       {/* Modals */}
       <AuthModal
+        key={`auth-${authModalOpen ? authMode : 'closed'}`}
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
         initialMode={authMode}
       />
 
       <DonorModal
+        key={`donor-${donorModalOpen ? selectedBloodGroup : 'closed'}`}
         isOpen={donorModalOpen}
         onClose={() => setDonorModalOpen(false)}
         selectedGroup={selectedBloodGroup || 'O+'}

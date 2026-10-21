@@ -228,3 +228,4 @@ export function Navbar({ onOpenAuth, onOpenHotlines }: NavbarProps) {
     </header>
   );
 }
+

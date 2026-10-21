@@ -3,8 +3,8 @@
 import React, { useState } from 'react';
 import { useLanguage } from '@/context/language-context';
 import { BloodGroup, BangladeshDivision } from '@/types';
-import { BANGLADESH_DIVISIONS } from '@/data/sample-data';
-import { X, HeartHandshake, ShieldCheck, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { BANGLADESH_DIVISIONS, DIVISION_NAMES_BN } from '@/data/sample-data';
+import { X, HeartHandshake, ShieldCheck, CheckCircle2, AlertTriangle, AlertCircle } from 'lucide-react';
 
 interface DonorModalProps {
   isOpen: boolean;
@@ -15,7 +15,7 @@ interface DonorModalProps {
 const BLOOD_GROUPS: BloodGroup[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModalProps) {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const [bloodGroup, setBloodGroup] = useState<BloodGroup>(selectedGroup);
   const [fullName, setFullName] = useState('');
   const [division, setDivision] = useState<BangladeshDivision>('Dhaka');
@@ -25,21 +25,42 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
   const [consent1, setConsent1] = useState(false);
   const [consent2, setConsent2] = useState(false);
   const [consent3, setConsent3] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
   const [isSuccess, setIsSuccess] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!consent1 || !consent2 || !consent3) {
-      alert('Please accept all consent items to proceed.');
+    setErrorMessage('');
+
+    // Bangladeshi phone validation
+    const cleanPhone = phone.replace(/[\s-]/g, '');
+    const bdPhoneRegex = /^(?:\+?880|0)?1[3-9]\d{8}$/;
+    if (!bdPhoneRegex.test(cleanPhone)) {
+      setErrorMessage(
+        language === 'bn'
+          ? 'অনুগ্রহ করে একটি সঠিক ১১ ডিজিটের বাংলাদেশি মোবাইল নম্বর প্রদান করুন (যেমন: 01700000000)।'
+          : 'Please enter a valid 11-digit Bangladeshi mobile number (e.g. 01700000000).'
+      );
       return;
     }
+
+    if (!consent1 || !consent2 || !consent3) {
+      setErrorMessage(
+        language === 'bn'
+          ? 'রক্তদাতা হিসেবে নিবন্ধনের জন্য অনুগ্রহ করে ৩টি সম্মতি শর্ত পূরণ করুন।'
+          : 'Please accept all 3 voluntary consent declarations to proceed.'
+      );
+      return;
+    }
+
     setIsSuccess(true);
   };
 
   const handleReset = () => {
     setIsSuccess(false);
+    setErrorMessage('');
     setFullName('');
     setArea('');
     setPhone('');
@@ -116,6 +137,13 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
+              {errorMessage && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <span className="font-medium">{errorMessage}</span>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">
@@ -165,7 +193,7 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
                   >
                     {BANGLADESH_DIVISIONS.map((div) => (
                       <option key={div} value={div}>
-                        {div}
+                        {language === 'bn' ? DIVISION_NAMES_BN[div] : div}
                       </option>
                     ))}
                   </select>
@@ -277,3 +305,4 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
     </div>
   );
 }
+

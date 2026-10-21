@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useLanguage } from '@/context/language-context';
 import { BloodDonor, BloodGroup } from '@/types';
-import { SAMPLE_DONORS, BANGLADESH_DIVISIONS } from '@/data/sample-data';
+import { SAMPLE_DONORS, BANGLADESH_DIVISIONS, DIVISION_NAMES_BN } from '@/data/sample-data';
 import {
   Droplets,
   Search,
@@ -18,6 +18,8 @@ import {
 
 interface BloodDonationProps {
   initialGroup?: BloodGroup | null;
+  initialDivision?: string;
+  initialSearch?: string;
   onOpenDonorRegister: (group?: BloodGroup) => void;
   onRequestBloodInfo: () => void;
 }
@@ -26,15 +28,19 @@ const BLOOD_GROUPS: BloodGroup[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 
 
 export function BloodDonation({
   initialGroup = null,
+  initialDivision = 'All',
+  initialSearch = '',
   onOpenDonorRegister,
   onRequestBloodInfo,
 }: BloodDonationProps) {
   const { language, t } = useLanguage();
+
+  const isSearchGroup = initialSearch && BLOOD_GROUPS.includes(initialSearch.trim().toUpperCase() as BloodGroup);
   const [selectedGroup, setSelectedGroup] = useState<BloodGroup | 'All'>(
-    initialGroup || 'All'
+    initialGroup || (isSearchGroup ? (initialSearch.trim().toUpperCase() as BloodGroup) : 'All')
   );
-  const [selectedDivision, setSelectedDivision] = useState<string>('All');
-  const [areaSearch, setAreaSearch] = useState('');
+  const [selectedDivision, setSelectedDivision] = useState<string>(initialDivision);
+  const [areaSearch, setAreaSearch] = useState(isSearchGroup ? '' : initialSearch);
   const [contactRequestModal, setContactRequestModal] = useState<BloodDonor | null>(null);
 
   // Filter logic
@@ -161,12 +167,13 @@ export function BloodDonation({
               <select
                 value={selectedDivision}
                 onChange={(e) => setSelectedDivision(e.target.value)}
+                aria-label={t.blood.filterDivision}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-slate-800 text-xs sm:text-sm font-medium focus:ring-2 focus:ring-rose-500 focus:outline-none"
               >
                 <option value="All">{t.hero.allDivisions}</option>
                 {BANGLADESH_DIVISIONS.map((div) => (
                   <option key={div} value={div}>
-                    {div}
+                    {language === 'bn' ? DIVISION_NAMES_BN[div] : div}
                   </option>
                 ))}
               </select>
@@ -184,6 +191,7 @@ export function BloodDonation({
                   value={areaSearch}
                   onChange={(e) => setAreaSearch(e.target.value)}
                   placeholder={t.blood.searchAreaPlaceholder}
+                  aria-label={t.blood.searchAreaPlaceholder}
                   className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-rose-500 focus:outline-none"
                 />
               </div>

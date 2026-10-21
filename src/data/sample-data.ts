@@ -11,6 +11,17 @@ export const BANGLADESH_DIVISIONS: BangladeshDivision[] = [
   'Mymensingh',
 ];
 
+export const DIVISION_NAMES_BN: Record<BangladeshDivision, string> = {
+  Dhaka: 'ঢাকা',
+  Chittagong: 'চট্টগ্রাম',
+  Rajshahi: 'রাজশাহী',
+  Sylhet: 'সিলেট',
+  Khulna: 'খুলনা',
+  Barishal: 'বরিশাল',
+  Rangpur: 'রংপুর',
+  Mymensingh: 'ময়মনসিংহ',
+};
+
 export const SAMPLE_DONORS: BloodDonor[] = [
   {
     id: 'donor-1',
@@ -519,3 +530,4 @@ export const OFFICIAL_HOTLINES: Hotline[] = [
     isGovernment: true,
   },
 ];
+

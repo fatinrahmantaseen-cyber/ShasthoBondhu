@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useLanguage } from '@/context/language-context';
-import { BANGLADESH_DIVISIONS } from '@/data/sample-data';
+import { BANGLADESH_DIVISIONS, DIVISION_NAMES_BN } from '@/data/sample-data';
 import {
   Search,
   MapPin,
@@ -21,7 +21,7 @@ interface HeroProps {
 }
 
 export function Hero({ onSearch, onOpenDonorRegister }: HeroProps) {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDivision, setSelectedDivision] = useState('All');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -79,6 +79,7 @@ export function Hero({ onSearch, onOpenDonorRegister }: HeroProps) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t.hero.searchPlaceholder}
+                aria-label={t.hero.searchPlaceholder}
                 className="w-full pl-11 pr-4 py-3 rounded-xl border border-transparent hover:border-slate-200 focus:border-blue-500 focus:bg-white text-slate-800 placeholder-slate-400 text-sm focus:outline-none transition-all"
               />
             </div>
@@ -89,12 +90,13 @@ export function Hero({ onSearch, onOpenDonorRegister }: HeroProps) {
               <select
                 value={selectedDivision}
                 onChange={(e) => setSelectedDivision(e.target.value)}
+                aria-label={t.hero.allDivisions}
                 className="w-full pl-9 pr-8 py-3 rounded-xl border border-transparent bg-transparent text-slate-700 text-sm font-medium focus:outline-none cursor-pointer"
               >
                 <option value="All">{t.hero.allDivisions}</option>
                 {BANGLADESH_DIVISIONS.map((div) => (
                   <option key={div} value={div}>
-                    {div}
+                    {language === 'bn' ? DIVISION_NAMES_BN[div] : div}
                   </option>
                 ))}
               </select>
@@ -106,6 +108,7 @@ export function Hero({ onSearch, onOpenDonorRegister }: HeroProps) {
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
+                aria-label={t.hero.allCategories}
                 className="w-full pl-9 pr-8 py-3 rounded-xl border border-transparent bg-transparent text-slate-700 text-sm font-medium focus:outline-none cursor-pointer"
               >
                 <option value="All">{t.hero.allCategories}</option>

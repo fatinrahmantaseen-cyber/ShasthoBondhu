@@ -275,6 +275,9 @@ export const translations = {
       guidanceNoticeText: 'If you or someone around you is facing a severe medical crisis, severe chest pain, major trauma, or acute breathing distress, do not wait for an online response. Call 999 or Shastho Batayon 16263 immediately or transport the patient to the nearest hospital casualty department.',
       disclaimer: 'Medical Disclaimer: ShasthoBondhu is an informational public prototype. We do not provide direct medical treatment or diagnosis. Listings are marked as demo data for layout preview.',
       copyright: 'ShasthoBondhu. Built with pride for Bangladesh healthcare.',
+      complianceTitle: 'Compliance & Ethics',
+      bloodPolicy: 'Non-Commercial Blood Policy',
+      dghsGuideline: 'DGHS Guidelines Compliant',
     }
   },
 
@@ -554,6 +557,10 @@ export const translations = {
       guidanceNoticeText: 'যদি রোগী গুরুতর শ্বাসকষ্ট, তীব্র বুকব্যথা বা আশঙ্কাজনক পরিস্থিতিতে থাকে, তবে অনলাইনে অপেক্ষার পরিবর্তে অবিলম্বে ৯৯৯ অথবা ১৬২৬৩ নম্বরে কল করুন কিংবা নিকটস্থ হাসপাতালের জরুরি বিভাগে রোগীকে স্থানান্তর করুন।',
       disclaimer: 'মেডিকেল শর্তাবলী: স্বাস্থ্যবন্ধু কোনো হাসপাতাল বা সরাসরি চিকিৎসা প্রদানকারী সংস্থা নয়। সকল তথ্য প্রাথমিক ধারণার জন্য সংকলিত।',
       copyright: 'স্বাস্থ্যবন্ধু। বাংলাদেশের স্বাস্থ্য সুরক্ষায় নিবেদিত প্ল্যাটফর্ম।',
+      complianceTitle: 'নীতিমালা ও নৈতিকতা',
+      bloodPolicy: 'অবাণিজ্যিক রক্তদান নীতিমালা',
+      dghsGuideline: 'স্বাস্থ্য অধিদপ্তর নির্দেশিকা অনুসারী',
     }
   }
 };
+
