@@ -41,3 +41,4 @@ def check_db_connection() -> Tuple[bool, str]:
         logger.warning(f"Database connection check failed: {exc}")
         # Return generic safe message without exposing sensitive credentials
         return False, f"Connection failed: {type(exc).__name__}"
+

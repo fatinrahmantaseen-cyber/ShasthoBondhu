@@ -25,3 +25,4 @@ def get_health():
           "database": settings.POSTGRES_DB,
         },
     }
+

@@ -20,7 +20,9 @@ from app.db.session import Base
 config = context.config
 
 # Set database URL dynamically from app settings
-config.set_main_option("sqlalchemy.url", settings.sqlalchemy_database_url)
+_db_url = settings.sqlalchemy_database_url
+_db_url_str = _db_url.render_as_string(hide_password=False) if hasattr(_db_url, "render_as_string") else str(_db_url)
+config.set_main_option("sqlalchemy.url", _db_url_str)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

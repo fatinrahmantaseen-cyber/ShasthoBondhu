@@ -1,7 +1,8 @@
 from pathlib import Path
 from typing import List, Union
-from pydantic import AnyHttpUrl, field_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import URL
 
 
 class Settings(BaseSettings):
@@ -34,12 +35,26 @@ class Settings(BaseSettings):
     DATABASE_URL: str | None = None
 
     @property
-    def sqlalchemy_database_url(self) -> str:
+    def sqlalchemy_database_url(self) -> Union[str, URL]:
+        # If POSTGRES_PASSWORD is provided, build safely via URL.create to handle special characters (@, :, /, #, %)
+        if self.POSTGRES_PASSWORD and self.POSTGRES_PASSWORD.strip():
+            return URL.create(
+                drivername="postgresql+psycopg",
+                username=self.POSTGRES_USER,
+                password=self.POSTGRES_PASSWORD,
+                host=self.POSTGRES_SERVER,
+                port=self.POSTGRES_PORT,
+                database=self.POSTGRES_DB,
+            )
         if self.DATABASE_URL and self.DATABASE_URL.strip():
             return self.DATABASE_URL
-        return (
-            f"postgresql+psycopg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
-            f"@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        return URL.create(
+            drivername="postgresql+psycopg",
+            username=self.POSTGRES_USER,
+            password=None,
+            host=self.POSTGRES_SERVER,
+            port=self.POSTGRES_PORT,
+            database=self.POSTGRES_DB,
         )
 
     model_config = SettingsConfigDict(
@@ -51,3 +66,4 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
