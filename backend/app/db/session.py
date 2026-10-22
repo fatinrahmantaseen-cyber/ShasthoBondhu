@@ -38,7 +38,7 @@ def check_db_connection() -> Tuple[bool, str]:
                 return True, "PostgreSQL connection active and responding."
             return False, "Unexpected database response."
     except Exception as exc:
-        logger.warning(f"Database connection check failed: {exc}")
+        logger.warning(f"Database connection check failed: {type(exc).__name__}")
         # Return generic safe message without exposing sensitive credentials
         return False, f"Connection failed: {type(exc).__name__}"
 
