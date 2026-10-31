@@ -14,6 +14,7 @@ import { Footer } from '@/components/footer';
 
 import { AuthModal } from '@/components/modals/auth-modal';
 import { DonorModal } from '@/components/modals/donor-modal';
+import { BloodRequestModal } from '@/components/modals/blood-request-modal';
 import { AppointmentModal } from '@/components/modals/appointment-modal';
 import { HotlineModal } from '@/components/modals/hotline-modal';
 import { LegalModal } from '@/components/modals/legal-modal';
@@ -30,6 +31,11 @@ function ShasthoBondhuApp() {
 
   const [donorModalOpen, setDonorModalOpen] = useState(false);
   const [selectedBloodGroup, setSelectedBloodGroup] = useState<BloodGroup | undefined>(undefined);
+
+  const [bloodRequestModalOpen, setBloodRequestModalOpen] = useState(false);
+  const [selectedRequestBloodGroup, setSelectedRequestBloodGroup] = useState<BloodGroup | undefined>(undefined);
+
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const [appointmentModalOpen, setAppointmentModalOpen] = useState(false);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
@@ -56,6 +62,11 @@ function ShasthoBondhuApp() {
   const handleOpenDonorRegister = (group?: BloodGroup) => {
     setSelectedBloodGroup(group);
     setDonorModalOpen(true);
+  };
+
+  const handleOpenBloodRequest = (group?: BloodGroup) => {
+    setSelectedRequestBloodGroup(group);
+    setBloodRequestModalOpen(true);
   };
 
   const handleOpenDoctorAppointment = (doctor: Doctor) => {
@@ -100,7 +111,9 @@ function ShasthoBondhuApp() {
           initialDivision={heroDivision}
           initialSearch={heroSearchQuery}
           onOpenDonorRegister={handleOpenDonorRegister}
+          onOpenBloodRequest={handleOpenBloodRequest}
           onRequestBloodInfo={() => handleOpenLegal('privacy')}
+          refreshTrigger={refreshTrigger}
         />
 
         {/* Hospital Directory Preview */}
@@ -149,6 +162,15 @@ function ShasthoBondhuApp() {
         isOpen={donorModalOpen}
         onClose={() => setDonorModalOpen(false)}
         selectedGroup={selectedBloodGroup || 'O+'}
+        onDonorRegistered={() => setRefreshTrigger((prev) => prev + 1)}
+      />
+
+      <BloodRequestModal
+        key={`req-${bloodRequestModalOpen ? selectedRequestBloodGroup : 'closed'}`}
+        isOpen={bloodRequestModalOpen}
+        onClose={() => setBloodRequestModalOpen(false)}
+        selectedGroup={selectedRequestBloodGroup || 'O+'}
+        onRequestCreated={() => setRefreshTrigger((prev) => prev + 1)}
       />
 
       <AppointmentModal

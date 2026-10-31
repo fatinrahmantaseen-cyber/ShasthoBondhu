@@ -14,16 +14,36 @@ export type BangladeshDivision =
 
 export interface BloodDonor {
   id: string;
-  name: string; // Clearly labeled demo name e.g. "Donor S. Rahman (Demo)"
+  name: string; // e.g. "Tanvir Hasan" or "Donor S. Rahman (Demo)"
   bloodGroup: BloodGroup;
-  division: BangladeshDivision;
+  division: BangladeshDivision | string;
   district: string;
   area: string;
   phoneMasked: string; // e.g. "+880 17**-***482"
   lastDonation: string; // e.g. "4 months ago"
   donationCount: number;
   available: boolean;
-  isDemo: true;
+  isDemo: boolean;
+}
+
+export type BloodRequestStatus = 'pending' | 'in_progress' | 'fulfilled' | 'cancelled' | 'expired';
+
+export interface BloodRequest {
+  id: string;
+  bloodGroup: BloodGroup;
+  division: BangladeshDivision | string;
+  district: string;
+  upazila: string;
+  unitsRequired: number;
+  requiredBy: string;
+  hospitalName: string;
+  medicalReason?: string | null;
+  additionalNotes?: string | null;
+  requestStatus: BloodRequestStatus;
+  contactName: string;
+  contactPhoneMasked: string;
+  isDemo: boolean;
+  createdAt: string;
 }
 
 export interface Hospital {
@@ -42,7 +62,8 @@ export interface Hospital {
   emergencyHotline?: string;
   bedStatusDemo: 'Call for Bed Info' | 'ICU Alert' | 'Standard Operation';
   ratingDemo: number;
-  isDemo: true;
+  isDemo: boolean;
+  verificationStatus?: 'unverified' | 'pending_verification' | 'verified' | string;
 }
 
 export interface Doctor {
@@ -53,7 +74,7 @@ export interface Doctor {
   degreeBn: string;
   specialtyEn: string;
   specialtyBn: string;
-  specialtyKey: 'medicine' | 'cardiology' | 'pediatrics' | 'gynecology' | 'orthopedics' | 'neurology' | 'dermatology' | 'ent';
+  specialtyKey: 'medicine' | 'cardiology' | 'pediatrics' | 'gynecology' | 'orthopedics' | 'neurology' | 'dermatology' | 'ent' | string;
   hospitalEn: string;
   hospitalBn: string;
   chamberEn: string;
@@ -65,7 +86,8 @@ export interface Doctor {
   visitingHoursBn: string;
   consultationFeeDemo: string;
   contactMasked: string;
-  isDemo: true;
+  isDemo: boolean;
+  verificationStatus?: 'unverified' | 'pending_verification' | 'verified' | string;
 }
 
 export interface Pharmacy {
@@ -82,7 +104,8 @@ export interface Pharmacy {
   openingHoursEn: string;
   openingHoursBn: string;
   services: string[];
-  isDemo: true;
+  isDemo: boolean;
+  verificationStatus?: 'unverified' | 'pending_verification' | 'verified' | string;
 }
 
 export interface Hotline {

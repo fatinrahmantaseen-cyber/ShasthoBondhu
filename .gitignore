@@ -46,6 +46,8 @@ next-env.d.ts
 # Python & Backend
 backend/.venv/
 backend/.env
+backend/.env*
+backend/.admin_*
 __pycache__/
 *.py[cod]
 *$py.class

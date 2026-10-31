@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/context/language-context';
-import { Hospital } from '@/types';
 import { SAMPLE_HOSPITALS, BANGLADESH_DIVISIONS, DIVISION_NAMES_BN } from '@/data/sample-data';
+import { api, HospitalResponse } from '@/lib/api-client';
 import {
   Building2,
   Search,
@@ -11,11 +11,32 @@ import {
   PhoneCall,
   AlertCircle,
   RotateCcw,
+  CheckCircle,
+  Loader2,
 } from 'lucide-react';
 
 interface HospitalDirectoryProps {
   initialSearch?: string;
   initialDivision?: string;
+}
+
+interface DisplayHospital {
+  id: string;
+  nameEn: string;
+  nameBn: string;
+  division: string;
+  districtEn: string;
+  districtBn: string;
+  addressEn: string;
+  addressBn: string;
+  contactEn: string;
+  contactBn: string;
+  type: string;
+  services: string[];
+  emergencyHotline?: string | null;
+  bedStatusDemo: string;
+  isDemo: boolean;
+  verificationStatus: string;
 }
 
 export function HospitalDirectory({
@@ -26,12 +47,64 @@ export function HospitalDirectory({
   const [search, setSearch] = useState(initialSearch);
   const [division, setDivision] = useState(initialDivision);
   const [selectedService, setSelectedService] = useState('All');
-  const [selectedHospitalForModal, setSelectedHospitalForModal] = useState<Hospital | null>(null);
+  const [selectedHospitalForModal, setSelectedHospitalForModal] = useState<DisplayHospital | null>(null);
+
+  // Live API States
+  const [liveHospitals, setLiveHospitals] = useState<HospitalResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Available service filter tags
   const serviceFilters = ['All', '24/7 Emergency', 'ICU', 'Dialysis Unit', 'CCU', 'NICU'];
 
-  const filteredHospitals = SAMPLE_HOSPITALS.filter((hosp) => {
+  useEffect(() => {
+    let isSubscribed = true;
+    async function loadHospitals() {
+      try {
+        const data = await api.hospitals.list({
+          division: division !== 'All' ? division : undefined,
+          service: selectedService !== 'All' ? selectedService : undefined,
+          search: search.trim() || undefined,
+        });
+        if (isSubscribed) {
+          setLiveHospitals(data);
+          setIsLoading(false);
+        }
+      } catch {
+        if (isSubscribed) {
+          setLiveHospitals([]);
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadHospitals();
+    return () => {
+      isSubscribed = false;
+    };
+  }, [division, selectedService, search]);
+
+  // Map live API records
+  const liveDisplay: DisplayHospital[] = liveHospitals.map((h) => ({
+    id: h.id,
+    nameEn: h.name,
+    nameBn: h.name_bn || h.name,
+    division: h.division,
+    districtEn: h.district,
+    districtBn: h.district,
+    addressEn: h.address,
+    addressBn: h.address_bn || h.address,
+    contactEn: h.public_contact,
+    contactBn: h.public_contact,
+    type: h.classification,
+    services: h.available_services || [],
+    emergencyHotline: h.emergency_hotline,
+    bedStatusDemo: 'Call for Bed Info',
+    isDemo: h.is_demo,
+    verificationStatus: h.verification_status,
+  }));
+
+  // Filter sample demo data
+  const demoDisplay: DisplayHospital[] = SAMPLE_HOSPITALS.filter((hosp) => {
     if (division !== 'All' && hosp.division !== division) return false;
     if (selectedService !== 'All' && !hosp.services.includes(selectedService)) return false;
 
@@ -48,7 +121,27 @@ export function HospitalDirectory({
       }
     }
     return true;
-  });
+  }).map((s) => ({
+    id: s.id,
+    nameEn: s.nameEn,
+    nameBn: s.nameBn,
+    division: s.division,
+    districtEn: s.districtEn,
+    districtBn: s.districtBn,
+    addressEn: s.addressEn,
+    addressBn: s.addressBn,
+    contactEn: s.contactEn,
+    contactBn: s.contactBn,
+    type: s.type,
+    services: s.services,
+    emergencyHotline: s.emergencyHotline,
+    bedStatusDemo: s.bedStatusDemo,
+    isDemo: true,
+    verificationStatus: 'unverified',
+  }));
+
+  // Combine live registered records first, followed by demo data
+  const filteredHospitals: DisplayHospital[] = [...liveDisplay, ...demoDisplay];
 
   const handleReset = () => {
     setSearch('');
@@ -138,14 +231,22 @@ export function HospitalDirectory({
 
         {/* Results Count Header */}
         <div className="flex items-center justify-between mb-4 px-1">
-          <p className="text-xs sm:text-sm font-semibold text-slate-600">
-            <span className="font-bold text-slate-900">{filteredHospitals.length}</span>{' '}
-            {t.hospitals.foundCount}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs sm:text-sm font-semibold text-slate-600">
+              <span className="font-bold text-slate-900">{filteredHospitals.length}</span>{' '}
+              {t.hospitals.foundCount}
+              {liveHospitals.length > 0 && (
+                <span className="ml-2 font-normal text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md text-xs border border-emerald-200">
+                  {liveHospitals.length} {language === 'bn' ? 'যাচাইকৃত হাসপাতাল' : 'verified facilities'}
+                </span>
+              )}
+            </p>
+            {isLoading && <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />}
+          </div>
           {(search || division !== 'All' || selectedService !== 'All') && (
             <button
               onClick={handleReset}
-              className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"
+              className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 cursor-pointer"
             >
               <RotateCcw className="w-3 h-3" />
               <span>Reset</span>
@@ -164,17 +265,35 @@ export function HospitalDirectory({
               return (
                 <div
                   key={hospital.id}
-                  className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between"
+                  className={`bg-white rounded-2xl border p-5 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between ${
+                    hospital.isDemo
+                      ? 'border-slate-200/90'
+                      : hospital.verificationStatus === 'verified'
+                      ? 'border-emerald-300 ring-1 ring-emerald-100'
+                      : 'border-amber-300 ring-1 ring-amber-100'
+                  }`}
                 >
                   <div>
-                    {/* Header with Type & Demo badge */}
+                    {/* Header with Type & Live/Demo badge */}
                     <div className="flex items-start justify-between gap-2 mb-3">
                       <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
                         {hospital.type} Facility
                       </span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
-                        Demo Data
-                      </span>
+                      {hospital.isDemo ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
+                          Demo Data
+                        </span>
+                      ) : hospital.verificationStatus === 'verified' ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3 text-emerald-600" />
+                          <span>Verified Facility</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 shrink-0 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3 text-amber-600" />
+                          <span>Verification Pending</span>
+                        </span>
+                      )}
                     </div>
 
                     <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-snug">
@@ -187,21 +306,23 @@ export function HospitalDirectory({
                     </div>
 
                     {/* Services Tags */}
-                    <div className="mt-4">
-                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
-                        {t.hospitals.keyServices}
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {hospital.services.map((srv) => (
-                          <span
-                            key={srv}
-                            className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-700"
-                          >
-                            {srv}
-                          </span>
-                        ))}
+                    {hospital.services.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                          {t.hospitals.keyServices}
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {hospital.services.map((srv) => (
+                            <span
+                              key={srv}
+                              className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-700"
+                            >
+                              {srv}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Bed Info & Contact */}
                     <div className="mt-4 pt-3 border-t border-slate-100 space-y-1.5 text-xs">
@@ -241,14 +362,14 @@ export function HospitalDirectory({
             <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">{t.hospitals.noResults}</p>
             <button
               onClick={handleReset}
-              className="mt-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs"
+              className="mt-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
             >
               Reset Search
             </button>
           </div>
         )}
 
-        {/* Hospital Demo Detail Modal */}
+        {/* Hospital Detail Modal */}
         {selectedHospitalForModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
             <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 border border-slate-200 space-y-4">
@@ -266,23 +387,46 @@ export function HospitalDirectory({
                 </div>
                 <button
                   onClick={() => setSelectedHospitalForModal(null)}
-                  className="p-1 text-slate-400 hover:text-slate-600"
+                  className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
-                <p className="font-bold flex items-center gap-1.5">
-                  <AlertCircle className="w-4 h-4 text-amber-600" />
-                  <span>Important Facility Notice</span>
-                </p>
-                <p>
-                  This hospital listing is a demo entry for prototype evaluation. In a medical
-                  emergency, dial government health hotline <strong>16263</strong> or national
-                  emergency <strong>999</strong> for official real-time casualty routing.
-                </p>
-              </div>
+              {selectedHospitalForModal.isDemo ? (
+                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <AlertCircle className="w-4 h-4 text-amber-600" />
+                    <span>Important Facility Notice</span>
+                  </p>
+                  <p>
+                    This hospital listing is a demo entry for prototype evaluation. In a medical
+                    emergency, dial government health hotline <strong>16263</strong> or national
+                    emergency <strong>999</strong> for official real-time casualty routing.
+                  </p>
+                </div>
+              ) : selectedHospitalForModal.verificationStatus === 'verified' ? (
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 space-y-1">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                    <span>Verified Healthcare Facility</span>
+                  </p>
+                  <p>
+                    Record Status: <strong>Verified Facility</strong>. Verified against regulatory healthcare records. For emergency routing, contact the facility desk directly or call national health hotline{' '}
+                    <strong>16263</strong>.
+                  </p>
+                </div>
+              ) : (
+                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <AlertCircle className="w-4 h-4 text-amber-600" />
+                    <span>Facility Verification Pending</span>
+                  </p>
+                  <p>
+                    Record Status: <strong>Unverified Listing</strong>. This facility has been submitted to the platform but has not yet completed official regulatory verification.
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2 text-xs text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-200">
                 <p>
@@ -292,18 +436,27 @@ export function HospitalDirectory({
                     : selectedHospitalForModal.addressEn}
                 </p>
                 <p>
-                  <strong>Simulated Hotline Desk:</strong>{' '}
-                  {selectedHospitalForModal.contactEn}
+                  <strong>Contact Desk:</strong> {selectedHospitalForModal.contactEn}
                 </p>
-                <p>
-                  <strong>Standard Facilities:</strong>{' '}
-                  {selectedHospitalForModal.services.join(', ')}
-                </p>
+                {selectedHospitalForModal.emergencyHotline && (
+                  <p>
+                    <strong>Emergency Hotline:</strong>{' '}
+                    <span className="font-mono text-red-600 font-bold">
+                      {selectedHospitalForModal.emergencyHotline}
+                    </span>
+                  </p>
+                )}
+                {selectedHospitalForModal.services.length > 0 && (
+                  <p>
+                    <strong>Key Facilities:</strong>{' '}
+                    {selectedHospitalForModal.services.join(', ')}
+                  </p>
+                )}
               </div>
 
               <button
                 onClick={() => setSelectedHospitalForModal(null)}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs"
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs cursor-pointer"
               >
                 Close Window
               </button>

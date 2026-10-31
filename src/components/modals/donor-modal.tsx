@@ -4,17 +4,24 @@ import React, { useState } from 'react';
 import { useLanguage } from '@/context/language-context';
 import { BloodGroup, BangladeshDivision } from '@/types';
 import { BANGLADESH_DIVISIONS, DIVISION_NAMES_BN } from '@/data/sample-data';
-import { X, HeartHandshake, ShieldCheck, CheckCircle2, AlertTriangle, AlertCircle } from 'lucide-react';
+import { api, ApiError, DonorPublicResponse } from '@/lib/api-client';
+import { X, HeartHandshake, ShieldCheck, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 interface DonorModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedGroup?: BloodGroup;
+  onDonorRegistered?: (donor: DonorPublicResponse) => void;
 }
 
 const BLOOD_GROUPS: BloodGroup[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
-export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModalProps) {
+export function DonorModal({
+  isOpen,
+  onClose,
+  selectedGroup = 'O+',
+  onDonorRegistered,
+}: DonorModalProps) {
   const { language, t } = useLanguage();
   const [bloodGroup, setBloodGroup] = useState<BloodGroup>(selectedGroup);
   const [fullName, setFullName] = useState('');
@@ -26,11 +33,13 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
   const [consent2, setConsent2] = useState(false);
   const [consent3, setConsent3] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [registeredDonor, setRegisteredDonor] = useState<DonorPublicResponse | null>(null);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -55,11 +64,48 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
       return;
     }
 
-    setIsSuccess(true);
+    setIsSubmitting(true);
+
+    try {
+      const trimmedArea = area.trim();
+      const parts = trimmedArea.split(',');
+      const deducedUpazila = parts[0].trim() || district.trim();
+      const specificArea = parts.length > 1 ? parts.slice(1).join(',').trim() : trimmedArea;
+
+      const response = await api.donors.create({
+        name: fullName.trim(),
+        blood_group: bloodGroup,
+        division,
+        district: district.trim(),
+        upazila: deducedUpazila,
+        area: specificArea || undefined,
+        phone: cleanPhone,
+        consent_given: true,
+      });
+
+      setRegisteredDonor(response);
+      setIsSuccess(true);
+      if (onDonorRegistered) {
+        onDonorRegistered(response);
+      }
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        setErrorMessage(err.message);
+      } else {
+        setErrorMessage(
+          language === 'bn'
+            ? 'সার্ভারে সংযোগ করা সম্ভব হয়নি। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।'
+            : 'Unable to connect to healthcare server. Please try again later.'
+        );
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleReset = () => {
     setIsSuccess(false);
+    setRegisteredDonor(null);
     setErrorMessage('');
     setFullName('');
     setArea('');
@@ -94,7 +140,7 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
             </div>
             <button
               onClick={handleReset}
-              className="text-white/80 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors"
+              className="text-white/80 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors cursor-pointer"
               aria-label="Close dialog"
             >
               <X className="w-5 h-5" />
@@ -102,10 +148,14 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
           </div>
         </div>
 
-        {/* Prototype Warning Banner */}
-        <div className="bg-red-50 border-b border-red-200/80 px-6 py-3 flex items-start gap-3 text-xs text-red-900">
-          <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-          <p className="leading-relaxed font-medium">{t.modals.donor.prototypeNotice}</p>
+        {/* Security & Privacy Banner */}
+        <div className="bg-slate-50 border-b border-slate-200/80 px-6 py-3 flex items-start gap-3 text-xs text-slate-700">
+          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+          <p className="leading-relaxed font-medium">
+            {language === 'bn'
+              ? 'নিরাপত্তা বার্তা: আপনার ফোন নম্বর ব্যাকএন্ডে স্বয়ংক্রিয়ভাবে এনক্রিপ্ট করে সংরক্ষণ করা হবে এবং সর্বসাধারণের কাছে শুধু মাস্ক করা ফরম্যাটে প্রদর্শিত হবে।'
+              : 'Privacy Note: Your phone number is encrypted at rest and will only appear in masked format (+880 17**-***482) to the public.'}
+          </p>
         </div>
 
         {/* Form Body */}
@@ -116,21 +166,39 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
                 <CheckCircle2 className="w-10 h-10" />
               </div>
               <h4 className="text-xl font-bold text-slate-800">
-                Donor Registration Simulated Successfully
+                {language === 'bn'
+                  ? 'রক্তদাতা হিসেবে সফলভাবে নিবন্ধিত হয়েছেন!'
+                  : 'Donor Registered Successfully!'}
               </h4>
               <p className="text-sm text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-200 leading-relaxed">
                 {t.modals.donor.successMsg}
               </p>
               <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-xs text-emerald-800 text-left space-y-1">
-                <p className="font-semibold">Simulated Record Summary:</p>
-                <p>• Donor: {fullName || 'Demo Volunteer'}</p>
-                <p>• Blood Group: {bloodGroup}</p>
-                <p>• Location: {area || 'Local Area'}, {district}, {division}</p>
+                <p className="font-semibold">
+                  {language === 'bn' ? 'নিবন্ধিত তথ্য সারসংক্ষেপ:' : 'Registration Record Summary:'}
+                </p>
+                <p>• Donor: {registeredDonor?.name || fullName}</p>
+                <p>• Blood Group: {registeredDonor?.blood_group || bloodGroup}</p>
+                <p>
+                  • Location: {registeredDonor?.upazila || area}, {registeredDonor?.district || district},{' '}
+                  {registeredDonor?.division || division}
+                </p>
+                <p>
+                  • Contact (Protected):{' '}
+                  <span className="font-mono font-bold text-slate-900">
+                    {registeredDonor?.phone_masked}
+                  </span>
+                </p>
               </div>
+              <p className="text-[11px] text-slate-500 italic">
+                {language === 'bn'
+                  ? '* দ্রষ্টব্য: এটি একটি স্বেচ্ছাসেবী নিবন্ধন। কোনো প্রকার রক্তের কেনাবেচা আইনত দণ্ডনীয়।'
+                  : '* Note: This is a voluntary donor registry. Commercial trading of blood is strictly illegal.'}
+              </p>
               <button
                 type="button"
                 onClick={handleReset}
-                className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl shadow-md transition-colors text-sm"
+                className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl shadow-md transition-colors text-sm cursor-pointer"
               >
                 {t.modals.auth.close}
               </button>
@@ -152,10 +220,11 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
                   <input
                     type="text"
                     required
+                    disabled={isSubmitting}
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder={t.modals.donor.fullNamePlaceholder}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm disabled:bg-slate-100"
                   />
                 </div>
 
@@ -165,8 +234,9 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
                   </label>
                   <select
                     value={bloodGroup}
+                    disabled={isSubmitting}
                     onChange={(e) => setBloodGroup(e.target.value as BloodGroup)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-red-500 text-sm font-bold"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-red-500 text-sm font-bold disabled:bg-slate-100"
                   >
                     {BLOOD_GROUPS.map((grp) => (
                       <option key={grp} value={grp}>
@@ -184,12 +254,13 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
                   </label>
                   <select
                     value={division}
+                    disabled={isSubmitting}
                     onChange={(e) => {
                       const div = e.target.value as BangladeshDivision;
                       setDivision(div);
                       setDistrict(div);
                     }}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-slate-900 bg-white focus:outline-none focus:ring-2 focus:ring-red-500 text-sm disabled:bg-slate-100"
                   >
                     {BANGLADESH_DIVISIONS.map((div) => (
                       <option key={div} value={div}>
@@ -206,9 +277,10 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
                   <input
                     type="text"
                     required
+                    disabled={isSubmitting}
                     value={district}
                     onChange={(e) => setDistrict(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm disabled:bg-slate-100"
                   />
                 </div>
 
@@ -219,10 +291,11 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
                   <input
                     type="text"
                     required
+                    disabled={isSubmitting}
                     value={area}
                     onChange={(e) => setArea(e.target.value)}
                     placeholder={t.modals.donor.areaPlaceholder}
-                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+                    className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm disabled:bg-slate-100"
                   />
                 </div>
               </div>
@@ -234,10 +307,11 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
                 <input
                   type="tel"
                   required
+                  disabled={isSubmitting}
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder={t.modals.donor.phonePlaceholder}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm disabled:bg-slate-100"
                 />
               </div>
 
@@ -252,6 +326,7 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
                   <input
                     type="checkbox"
                     required
+                    disabled={isSubmitting}
                     checked={consent1}
                     onChange={(e) => setConsent1(e.target.checked)}
                     className="mt-0.5 rounded border-slate-300 text-red-600 focus:ring-red-500"
@@ -263,6 +338,7 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
                   <input
                     type="checkbox"
                     required
+                    disabled={isSubmitting}
                     checked={consent2}
                     onChange={(e) => setConsent2(e.target.checked)}
                     className="mt-0.5 rounded border-slate-300 text-red-600 focus:ring-red-500"
@@ -274,6 +350,7 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
                   <input
                     type="checkbox"
                     required
+                    disabled={isSubmitting}
                     checked={consent3}
                     onChange={(e) => setConsent3(e.target.checked)}
                     className="mt-0.5 rounded border-slate-300 text-red-600 focus:ring-red-500"
@@ -285,17 +362,25 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
               <div className="flex items-center gap-3 pt-2">
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={handleReset}
-                  className="w-1/3 py-2.5 px-4 border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium rounded-xl text-sm transition-colors"
+                  className="w-1/3 py-2.5 px-4 border border-slate-200 hover:bg-slate-50 text-slate-700 font-medium rounded-xl text-sm transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {t.modals.donor.cancelBtn}
                 </button>
                 <button
                   type="submit"
-                  disabled={!consent1 || !consent2 || !consent3}
-                  className="w-2/3 py-3 px-4 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-md shadow-red-500/20 text-sm transition-all"
+                  disabled={isSubmitting || !consent1 || !consent2 || !consent3}
+                  className="w-2/3 py-3 px-4 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl shadow-md shadow-red-500/20 text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  {t.modals.donor.submitBtn}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>{language === 'bn' ? 'নিবন্ধন হচ্ছে...' : 'Registering...'}</span>
+                    </>
+                  ) : (
+                    <span>{t.modals.donor.submitBtn}</span>
+                  )}
                 </button>
               </div>
             </form>
@@ -305,4 +390,3 @@ export function DonorModal({ isOpen, onClose, selectedGroup = 'O+' }: DonorModal
     </div>
   );
 }
-

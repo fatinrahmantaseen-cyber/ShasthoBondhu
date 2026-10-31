@@ -1,12 +1,14 @@
 import logging
 from typing import Generator, Tuple
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 
 # Initialize SQLAlchemy engine with pool pre-ping
 engine = create_engine(

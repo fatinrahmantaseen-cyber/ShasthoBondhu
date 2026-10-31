@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/context/language-context';
-import { Doctor } from '@/types';
+import { Doctor, BangladeshDivision } from '@/types';
 import { SAMPLE_DOCTORS, BANGLADESH_DIVISIONS, DIVISION_NAMES_BN } from '@/data/sample-data';
+import { api, DoctorResponse } from '@/lib/api-client';
 import {
   Stethoscope,
   Search,
@@ -13,6 +14,9 @@ import {
   RotateCcw,
   Banknote,
   GraduationCap,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react';
 
 interface DoctorDirectoryProps {
@@ -31,6 +35,10 @@ export function DoctorDirectory({
   const [division, setDivision] = useState(initialDivision);
   const [specialtyFilter, setSpecialtyFilter] = useState('All');
 
+  // Live API States
+  const [liveDoctors, setLiveDoctors] = useState<DoctorResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
   const specialties = [
     { key: 'All', labelEn: 'All Specialties', labelBn: 'সকল বিশেষজ্ঞ' },
     { key: 'medicine', labelEn: 'Medicine & Dengue', labelBn: 'মেডিসিন ও ডেঙ্গু' },
@@ -41,7 +49,60 @@ export function DoctorDirectory({
     { key: 'neurology', labelEn: 'Neurology', labelBn: 'নিউরোমেডিসিন' },
   ];
 
-  const filteredDoctors = SAMPLE_DOCTORS.filter((doc) => {
+  useEffect(() => {
+    let isSubscribed = true;
+    async function loadDoctors() {
+      try {
+        const data = await api.doctors.list({
+          division: division !== 'All' ? division : undefined,
+          specialty: specialtyFilter !== 'All' ? specialtyFilter : undefined,
+          search: search.trim() || undefined,
+        });
+        if (isSubscribed) {
+          setLiveDoctors(data);
+          setIsLoading(false);
+        }
+      } catch {
+        if (isSubscribed) {
+          setLiveDoctors([]);
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadDoctors();
+    return () => {
+      isSubscribed = false;
+    };
+  }, [division, specialtyFilter, search]);
+
+  // Map live API records to Doctor type
+  const liveDisplay: Doctor[] = liveDoctors.map((d) => ({
+    id: d.id,
+    nameEn: d.name,
+    nameBn: d.name_bn || d.name,
+    degreeEn: d.qualifications,
+    degreeBn: d.qualifications,
+    specialtyEn: d.specialty,
+    specialtyBn: d.specialty_bn || d.specialty,
+    specialtyKey: d.specialty.toLowerCase(),
+    hospitalEn: d.hospital_or_chamber,
+    hospitalBn: d.hospital_or_chamber,
+    chamberEn: d.chamber_address,
+    chamberBn: d.chamber_address,
+    division: d.division as BangladeshDivision,
+    districtEn: d.district,
+    districtBn: d.district,
+    visitingHoursEn: d.visiting_hours || 'Call chamber for visiting hours',
+    visitingHoursBn: d.visiting_hours || 'সময়সূচীর জন্য চেম্বারে যোগাযোগ করুন',
+    consultationFeeDemo: d.consultation_fee || 'BDT 1000',
+    contactMasked: d.public_contact,
+    isDemo: d.is_demo,
+    verificationStatus: d.verification_status,
+  }));
+
+  // Filter demo doctors
+  const demoDisplay: Doctor[] = SAMPLE_DOCTORS.filter((doc) => {
     if (division !== 'All' && doc.division !== division) return false;
     if (specialtyFilter !== 'All' && doc.specialtyKey !== specialtyFilter) return false;
 
@@ -58,7 +119,12 @@ export function DoctorDirectory({
       }
     }
     return true;
-  });
+  }).map((doc) => ({
+    ...doc,
+    verificationStatus: 'unverified',
+  }));
+
+  const filteredDoctors: Doctor[] = [...liveDisplay, ...demoDisplay];
 
   const handleReset = () => {
     setSearch('');
@@ -84,7 +150,7 @@ export function DoctorDirectory({
         </div>
 
         {/* Search & Filters */}
-        <div className="p-4 sm:p-5 bg-white rounded-2xl border border-slate-200/90 shadow-sm mb-8 space-y-4">
+        <div className="p-4 sm:p-5 bg-white rounded-2xl border border-slate-200/90 shadow-xs mb-8 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {/* Search Box */}
             <div className="md:col-span-2 relative">
@@ -143,14 +209,22 @@ export function DoctorDirectory({
 
         {/* Results Count Header */}
         <div className="flex items-center justify-between mb-4 px-1">
-          <p className="text-xs sm:text-sm font-semibold text-slate-600">
-            <span className="font-bold text-slate-900">{filteredDoctors.length}</span>{' '}
-            {language === 'bn' ? 'জন বিশেষজ্ঞ চিকিৎসক প্রদর্শিত (নমুনা তথ্য)' : 'doctors listed (Demo Data)'}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs sm:text-sm font-semibold text-slate-600">
+              <span className="font-bold text-slate-900">{filteredDoctors.length}</span>{' '}
+              {language === 'bn' ? 'জন বিশেষজ্ঞ চিকিৎসক প্রদর্শিত' : 'doctors listed'}
+              {liveDoctors.length > 0 && (
+                <span className="ml-2 font-normal text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md text-xs border border-emerald-200">
+                  {liveDoctors.length} {language === 'bn' ? 'যাচাইকৃত চিকিৎসক' : 'verified doctors'}
+                </span>
+              )}
+            </p>
+            {isLoading && <Loader2 className="w-3.5 h-3.5 text-blue-600 animate-spin" />}
+          </div>
           {(search || division !== 'All' || specialtyFilter !== 'All') && (
             <button
               onClick={handleReset}
-              className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"
+              className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 cursor-pointer"
             >
               <RotateCcw className="w-3 h-3" />
               <span>Reset</span>
@@ -171,7 +245,13 @@ export function DoctorDirectory({
               return (
                 <div
                   key={doc.id}
-                  className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between"
+                  className={`bg-white rounded-2xl border p-5 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between ${
+                    doc.isDemo
+                      ? 'border-slate-200/90'
+                      : doc.verificationStatus === 'verified'
+                      ? 'border-emerald-300 ring-1 ring-emerald-100'
+                      : 'border-amber-300 ring-1 ring-amber-100'
+                  }`}
                 >
                   <div>
                     {/* Header */}
@@ -179,9 +259,21 @@ export function DoctorDirectory({
                       <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-teal-50 text-teal-700 border border-teal-200">
                         {specialty}
                       </span>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
-                        {t.doctors.demoBadge}
-                      </span>
+                      {doc.isDemo ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
+                          {t.doctors.demoBadge}
+                        </span>
+                      ) : doc.verificationStatus === 'verified' ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3 text-emerald-600" />
+                          <span>Verified Specialist</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 shrink-0 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3 text-amber-600" />
+                          <span>Verification Pending</span>
+                        </span>
+                      )}
                     </div>
 
                     <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-snug">
@@ -246,7 +338,7 @@ export function DoctorDirectory({
             <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">{t.doctors.noResults}</p>
             <button
               onClick={handleReset}
-              className="mt-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs"
+              className="mt-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
             >
               Reset Search
             </button>

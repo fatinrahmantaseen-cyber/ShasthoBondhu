@@ -1,16 +1,5 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
 
 export const metadata: Metadata = {
   title: 'ShasthoBondhu (স্বাস্থ্যবন্ধু) | Find Care. Donate Blood. Save Lives.',
@@ -36,9 +25,12 @@ export default function RootLayout({
   return (
     <html
       lang="bn"
-      className={`${geistSans.variable} ${geistMono.variable} h-full scroll-smooth antialiased`}
+      className="h-full scroll-smooth antialiased"
     >
-      <body className="min-h-full flex flex-col bg-white text-slate-900 font-sans">
+      <body
+        className="min-h-full flex flex-col bg-white text-slate-900 font-sans"
+        suppressHydrationWarning
+      >
         {children}
       </body>
     </html>

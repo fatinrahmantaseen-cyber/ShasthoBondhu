@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/context/language-context';
-import { Pharmacy } from '@/types';
+import { Pharmacy, BangladeshDivision } from '@/types';
 import { SAMPLE_PHARMACIES, BANGLADESH_DIVISIONS, DIVISION_NAMES_BN } from '@/data/sample-data';
+import { api, PharmacyResponse } from '@/lib/api-client';
 import {
   Pill,
   Search,
@@ -12,6 +13,9 @@ import {
   PhoneCall,
   AlertTriangle,
   RotateCcw,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react';
 
 interface PharmacyDirectoryProps {
@@ -29,7 +33,58 @@ export function PharmacyDirectory({
   const [only24Hours, setOnly24Hours] = useState(false);
   const [selectedPharmaModal, setSelectedPharmaModal] = useState<Pharmacy | null>(null);
 
-  const filteredPharmacies = SAMPLE_PHARMACIES.filter((pharma) => {
+  // Live API States
+  const [livePharmacies, setLivePharmacies] = useState<PharmacyResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    let isSubscribed = true;
+    async function loadPharmacies() {
+      try {
+        const data = await api.pharmacies.list({
+          division: division !== 'All' ? division : undefined,
+          is_open_24_hours: only24Hours ? true : undefined,
+          search: search.trim() || undefined,
+        });
+        if (isSubscribed) {
+          setLivePharmacies(data);
+          setIsLoading(false);
+        }
+      } catch {
+        if (isSubscribed) {
+          setLivePharmacies([]);
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadPharmacies();
+    return () => {
+      isSubscribed = false;
+    };
+  }, [division, only24Hours, search]);
+
+  // Map live API records
+  const liveDisplay: Pharmacy[] = livePharmacies.map((p) => ({
+    id: p.id,
+    nameEn: p.name,
+    nameBn: p.name_bn || p.name,
+    division: p.division as BangladeshDivision,
+    districtEn: p.district,
+    districtBn: p.district,
+    addressEn: p.address,
+    addressBn: p.address_bn || p.address,
+    phoneMasked: p.public_contact,
+    isOpen24Hours: p.is_open_24_hours,
+    openingHoursEn: p.opening_hours || (p.is_open_24_hours ? 'Open 24/7' : 'Standard Business Hours'),
+    openingHoursBn: p.opening_hours || (p.is_open_24_hours ? '২৪/৭ খোলা' : 'সাধারণ ব্যবসায়িক সময়'),
+    services: p.available_services || ['Medicine Dispensing'],
+    isDemo: p.is_demo,
+    verificationStatus: p.verification_status,
+  }));
+
+  // Filter sample demo pharmacies
+  const demoDisplay: Pharmacy[] = SAMPLE_PHARMACIES.filter((pharma) => {
     if (division !== 'All' && pharma.division !== division) return false;
     if (only24Hours && !pharma.isOpen24Hours) return false;
 
@@ -45,7 +100,12 @@ export function PharmacyDirectory({
       }
     }
     return true;
-  });
+  }).map((pharma) => ({
+    ...pharma,
+    verificationStatus: 'unverified',
+  }));
+
+  const filteredPharmacies: Pharmacy[] = [...liveDisplay, ...demoDisplay];
 
   const handleReset = () => {
     setSearch('');
@@ -116,14 +176,14 @@ export function PharmacyDirectory({
             </div>
           </div>
 
-          {/* 24/7 Filter Toggle */}
-          <div className="pt-2 border-t border-slate-200/60 flex items-center gap-3">
-            <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700">
+          {/* 24 Hours Toggle */}
+          <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between">
+            <label className="flex items-center gap-2 cursor-pointer text-xs sm:text-sm font-semibold text-slate-700">
               <input
                 type="checkbox"
                 checked={only24Hours}
                 onChange={(e) => setOnly24Hours(e.target.checked)}
-                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-4 h-4"
+                className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
               />
               <span>{t.pharmacy.filter24Hours}</span>
             </label>
@@ -132,14 +192,22 @@ export function PharmacyDirectory({
 
         {/* Results Count Header */}
         <div className="flex items-center justify-between mb-4 px-1">
-          <p className="text-xs sm:text-sm font-semibold text-slate-600">
-            <span className="font-bold text-slate-900">{filteredPharmacies.length}</span>{' '}
-            {language === 'bn' ? 'টি ফার্মেসি তালিকাভুক্ত (নমুনা তথ্য)' : 'pharmacies listed (Demo Data)'}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs sm:text-sm font-semibold text-slate-600">
+              <span className="font-bold text-slate-900">{filteredPharmacies.length}</span>{' '}
+              {language === 'bn' ? 'টি ফার্মেসি প্রদর্শিত' : 'pharmacies found'}
+              {livePharmacies.length > 0 && (
+                <span className="ml-2 font-normal text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md text-xs border border-emerald-200">
+                  {livePharmacies.length} {language === 'bn' ? 'যাচাইকৃত ফার্মেসি' : 'verified pharmacies'}
+                </span>
+              )}
+            </p>
+            {isLoading && <Loader2 className="w-3.5 h-3.5 text-emerald-600 animate-spin" />}
+          </div>
           {(search || division !== 'All' || only24Hours) && (
             <button
               onClick={handleReset}
-              className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1"
+              className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1 cursor-pointer"
             >
               <RotateCcw className="w-3 h-3" />
               <span>Reset</span>
@@ -158,25 +226,49 @@ export function PharmacyDirectory({
               return (
                 <div
                   key={pharma.id}
-                  className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between"
+                  className={`bg-white rounded-2xl border p-5 shadow-xs hover:shadow-lg transition-all flex flex-col justify-between ${
+                    pharma.isDemo
+                      ? 'border-slate-200/90'
+                      : pharma.verificationStatus === 'verified'
+                      ? 'border-emerald-300 ring-1 ring-emerald-100'
+                      : 'border-amber-300 ring-1 ring-amber-100'
+                  }`}
                 >
                   <div>
                     {/* Badge & Timing */}
                     <div className="flex items-start justify-between gap-2 mb-3">
                       {pharma.isOpen24Hours ? (
-                        <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
-                          <span>24/7 Emergency</span>
-                        </span>
+                        pharma.verificationStatus === 'verified' ? (
+                          <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                            <span>24/7 Verified Emergency</span>
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                            24/7 (Sample Listing)
+                          </span>
+                        )
                       ) : (
                         <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
                           {t.pharmacy.standardHours}
                         </span>
                       )}
 
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
-                        {t.pharmacy.demoBadge}
-                      </span>
+                      {pharma.isDemo ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
+                          {t.pharmacy.demoBadge}
+                        </span>
+                      ) : pharma.verificationStatus === 'verified' ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0 flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3 text-emerald-600" />
+                          <span>Verified Dispensary</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 shrink-0 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3 text-amber-600" />
+                          <span>Verification Pending</span>
+                        </span>
+                      )}
                     </div>
 
                     <h3 className="text-base sm:text-lg font-bold text-slate-900 tracking-tight leading-snug">
@@ -207,16 +299,18 @@ export function PharmacyDirectory({
                     </div>
 
                     {/* Services Tags */}
-                    <div className="mt-3 flex flex-wrap gap-1.5">
-                      {pharma.services.map((srv) => (
-                        <span
-                          key={srv}
-                          className="text-[10px] font-medium px-2 py-0.5 rounded bg-emerald-50/60 text-emerald-800 border border-emerald-100/60"
-                        >
-                          {srv}
-                        </span>
-                      ))}
-                    </div>
+                    {pharma.services.length > 0 && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {pharma.services.map((srv) => (
+                          <span
+                            key={srv}
+                            className="text-[10px] font-medium px-2 py-0.5 rounded bg-emerald-50/60 text-emerald-800 border border-emerald-100/60"
+                          >
+                            {srv}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Card Action */}
@@ -242,14 +336,14 @@ export function PharmacyDirectory({
             <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">{t.pharmacy.noResults}</p>
             <button
               onClick={handleReset}
-              className="mt-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs"
+              className="mt-2 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs cursor-pointer"
             >
               Reset Search
             </button>
           </div>
         )}
 
-        {/* Demo Pharmacy Contact Modal */}
+        {/* Pharmacy Contact Modal */}
         {selectedPharmaModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
             <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 border border-slate-200 space-y-4">
@@ -262,27 +356,51 @@ export function PharmacyDirectory({
                 </div>
                 <button
                   onClick={() => setSelectedPharmaModal(null)}
-                  className="p-1 text-slate-400 hover:text-slate-600"
+                  className="p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
                 >
                   ✕
                 </button>
               </div>
 
-              <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
-                <p className="font-bold flex items-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4 text-amber-600" />
-                  <span>Prescription Medicine Verification</span>
-                </p>
-                <p>
-                  This phone number is simulated demo data ({selectedPharmaModal.phoneMasked}). In
-                  real scenarios, please bring a prescription stamped by a registered BMDC doctor
-                  when collecting controlled prescription items.
-                </p>
-              </div>
+              {selectedPharmaModal.isDemo ? (
+                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                    <span>Prescription Medicine Verification</span>
+                  </p>
+                  <p>
+                    This phone number is simulated demo data ({selectedPharmaModal.phoneMasked}). In
+                    real scenarios, please bring a prescription stamped by a registered BMDC doctor
+                    when collecting controlled prescription items.
+                  </p>
+                </div>
+              ) : selectedPharmaModal.verificationStatus === 'verified' ? (
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 space-y-1">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                    <span>Verified Licensed Dispensary</span>
+                  </p>
+                  <p>
+                    Direct Contact Desk:{' '}
+                    <strong className="font-mono">{selectedPharmaModal.phoneMasked}</strong>.
+                    Operating hours: {language === 'bn' ? selectedPharmaModal.openingHoursBn : selectedPharmaModal.openingHoursEn}.
+                  </p>
+                </div>
+              ) : (
+                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <AlertCircle className="w-4 h-4 text-amber-600" />
+                    <span>Dispensary Verification Pending</span>
+                  </p>
+                  <p>
+                    This pharmacy listing is pending DGDA drug license verification.
+                  </p>
+                </div>
+              )}
 
               <button
                 onClick={() => setSelectedPharmaModal(null)}
-                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs"
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs cursor-pointer"
               >
                 Close Window
               </button>
