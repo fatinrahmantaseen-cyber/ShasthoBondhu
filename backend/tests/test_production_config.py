@@ -107,6 +107,28 @@ class TestProductionConfiguration(unittest.TestCase):
         )
         self.assertEqual(settings.ALLOWED_HOSTS, ["localhost", "127.0.0.1", "api.example.com"])
 
+    def test_env_source_allowed_hosts_and_cors_parsing(self):
+        """Both JSON array and comma-separated string env vars parse without SettingsError."""
+        import os
+
+        # Test comma-separated environment variables
+        with patch.dict(os.environ, {
+            "ALLOWED_HOSTS": "localhost, 127.0.0.1, testserver",
+            "CORS_ORIGINS": "http://localhost:3000, http://localhost:3001",
+        }):
+            s_csv = Settings(ENVIRONMENT="development")
+            self.assertEqual(s_csv.ALLOWED_HOSTS, ["localhost", "127.0.0.1", "testserver"])
+            self.assertEqual(s_csv.CORS_ORIGINS, ["http://localhost:3000", "http://localhost:3001"])
+
+        # Test JSON array environment variables
+        with patch.dict(os.environ, {
+            "ALLOWED_HOSTS": '["localhost", "127.0.0.1", "testserver"]',
+            "CORS_ORIGINS": '["http://localhost:3000", "http://localhost:3001"]',
+        }):
+            s_json = Settings(ENVIRONMENT="development")
+            self.assertEqual(s_json.ALLOWED_HOSTS, ["localhost", "127.0.0.1", "testserver"])
+            self.assertEqual(s_json.CORS_ORIGINS, ["http://localhost:3000", "http://localhost:3001"])
+
     def test_production_disables_api_docs_endpoints(self):
         """Production environment sets docs_url, redoc_url, and openapi_url to None."""
         with patch("app.config.settings.ENVIRONMENT", "production"):

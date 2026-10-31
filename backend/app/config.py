@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     PORT: int = 8000
 
     # CORS origins permitted to access this API
-    CORS_ORIGINS: List[str] = [
+    CORS_ORIGINS: Union[List[str], str] = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:3001",
@@ -25,10 +25,19 @@ class Settings(BaseSettings):
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
-        if isinstance(v, str) and not v.startswith("["):
+        if isinstance(v, str):
+            v_stripped = v.strip()
+            if v_stripped.startswith("[") and v_stripped.endswith("]"):
+                try:
+                    import json
+                    parsed = json.loads(v_stripped)
+                    if isinstance(parsed, list):
+                        return [str(i).strip() for i in parsed if str(i).strip()]
+                except Exception:
+                    pass
             return [i.strip() for i in v.split(",") if i.strip()]
-        elif isinstance(v, (list, str)):
-            return v  # type: ignore
+        elif isinstance(v, list):
+            return [str(i).strip() for i in v if str(i).strip()]
         return [
             "http://localhost:3000",
             "http://127.0.0.1:3000",
@@ -37,15 +46,24 @@ class Settings(BaseSettings):
         ]
 
     # Host header protection / TrustedHostMiddleware configuration
-    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1", "testserver"]
+    ALLOWED_HOSTS: Union[List[str], str] = ["localhost", "127.0.0.1", "testserver"]
 
     @field_validator("ALLOWED_HOSTS", mode="before")
     @classmethod
     def assemble_allowed_hosts(cls, v: Union[str, List[str]]) -> List[str]:
-        if isinstance(v, str) and not v.startswith("["):
+        if isinstance(v, str):
+            v_stripped = v.strip()
+            if v_stripped.startswith("[") and v_stripped.endswith("]"):
+                try:
+                    import json
+                    parsed = json.loads(v_stripped)
+                    if isinstance(parsed, list):
+                        return [str(i).strip() for i in parsed if str(i).strip()]
+                except Exception:
+                    pass
             return [i.strip() for i in v.split(",") if i.strip()]
-        elif isinstance(v, (list, str)):
-            return v  # type: ignore
+        elif isinstance(v, list):
+            return [str(i).strip() for i in v if str(i).strip()]
         return ["localhost", "127.0.0.1", "testserver"]
 
     # PostgreSQL Database settings

@@ -48,7 +48,8 @@ jobs:
       ADMIN_PASSWORD_HASH: "pbkdf2_sha256$600000$63695f746573745f73616c745f686578$b24d7768565c92d5be326e0b7a8fc7f3eecdd9df67d3d7589d424bfa767feff9"
       ADMIN_SECRET_KEY: "ci-test-signing-secret-key-32-bytes-long-for-testing-only"
       ADMIN_TOKEN_EXPIRE_MINUTES: "120"
-      ALLOWED_HOSTS: "localhost,127.0.0.1,testserver"
+      CORS_ORIGINS: '["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"]'
+      ALLOWED_HOSTS: '["localhost", "127.0.0.1", "testserver"]'
       PYTHONPATH: backend
 
     steps:
